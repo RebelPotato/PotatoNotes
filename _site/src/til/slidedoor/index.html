@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+
+<!-- <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script> -->
+<!-- <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3.0.1/es5/tex-mml-chtml.js"></script> -->
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css" integrity="sha384-vKruj+a13U8yHIkAyGgK1J3ArTLzrFGBbBc0tDp4ad/EyewESeXE/Iv67Aj8gKZ0" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js" integrity="sha384-PwRUT/YqbnEjkZO0zZxNqcxACrXe+j766U2amXcgMg5457rve2Y7I6ZJSm2A0mS4" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+
+<script src="paper.js"></script>
+
+<style>
+    body {
+        margin: 40px auto;
+        max-width: 650px;
+        line-height: 1.6;
+        font-size: 18px;
+        color: #444;
+        padding: 0 10px;
+    }
+
+    h1,
+    h2,
+    h3 {
+        line-height: 1.2;
+    }
+
+    canvas {
+        padding-left: 0;
+        padding-right: 0;
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+        border: 3px solid #d3d3d3;
+    }
+
+</style>
+<script>
+    function clip(x,l,r){
+        if(x<l) return l;
+        if(x<r) return x;
+        return r;
+    }
+    function blend(l,r,x){
+        return x*r+(1-x)*l;
+    }
+    function square(x){
+        return x*x;
+    }
+    function cube(x){
+        return x*x*x;
+    }
+    paper.install(window);
+    window.onload = ()=>{
+        function pointBlend(p,l,r,x){
+            p.x = blend(l.x,r.x,x);
+            p.y = blend(l.y,r.y,x);
+        }
+        //First picture: a door with physics
+        let scope1 = new paper.PaperScope();
+        scope1.setup("pic1");
+        scope1.activate();
+        let center = new Point([240,240]);
+        let half_width = 120;
+        let door_width = 150;
+
+        let wall = new Path({
+            segments:[  center.add([half_width,half_width]),
+                        center.add([half_width,-half_width]),
+                        center.add([-half_width,-half_width])],
+            strokeColor: '#404040',
+            strokeWidth: 5
+        });
+
+        let glass = new CompoundPath({
+            children:[
+                new Path.Line(center.add([-half_width,-half_width-2.5]),center.add([-half_width,half_width-door_width])),
+                new Path.Line(center.add([half_width+2.5,half_width]),center.add([-half_width-1.5,half_width]))
+            ],
+            strokeColor : '#999999',
+            strokeWidth : 3
+        });
+
+        let glass_extention = new Path({
+            segments:[  center.add([-half_width,half_width-door_width-9]),
+                        center.add([-half_width,half_width])],
+            strokeColor: '#999999',
+            strokeWidth: 3,
+            dashArray:[18,9]
+        });
+
+        let door = [0,1];
+        let door_cor = [center.add([-half_width,half_width-door_width*door[1]]),
+                        center.add([-half_width+door_width*door[0],half_width])];
+        
+        let door_path = new Path({
+            segments:[door_cor[0],door_cor[1]],
+            strokeColor: '#3399ff',
+            strokeWidth: 5,
+            strokeCap: 'round'
+        });
+
+        let pre_door_path = new Array();
+        let shadow_num = 7;
+        for(let i=0;i<shadow_num;i++){
+            pre_door_path.push(door_path.clone());
+            pre_door_path[i].opacity=(shadow_num-i)/(shadow_num+1);
+        }
+
+        let door_angular_velocity = -0.01;
+        let door_angle = Math.acos(0);
+
+        let tool = new Tool();
+        let grab_x = 0;
+        let grab_line = null;
+
+        tool.onMouseDown = (event)=>{
+            door_cor[0] = door_path.segments[0].point;
+            door_cor[1] = door_path.segments[1].point;
+            let v1=door_cor[1].subtract(door_cor[0]);
+            let v2=event.downPoint.subtract(door_cor[0]);
+            let x = clip(v1.dot(v2)/(v1.x*v1.x+v1.y*v1.y),0,1);
+            let v = v1.multiply(x);
+            let d = v2.subtract(v).length;
+            // console.log("Shortest distance: "+d);
+            if(d<=50){
+                //successful grab
+                // console.log("grabbed!");
+                grab_x = x;
+                grab_line = new Path({
+                    segments:[door_cor[0].add(v),event.downPoint],
+                    strokeColor: 'red',
+                    strokeWidth: 2,
+                    lineCap: 'round'
+                });
+            }
+        }
+        tool.onMouseDrag = (event) => {
+            if(grab_line==null) return;
+            grab_line.segments[1].point.x = event.middlePoint.x;
+            grab_line.segments[1].point.y = event.middlePoint.y;
+        }
+        tool.onMouseUp = (event)=>{
+            if(grab_line==null) return;
+            grab_line.remove();
+            grab_line = null;
+        }
+
+        scope1.view.onFrame = (event)=>{
+            //not realistic physics step
+            //first save the previous doors
+            pre_door_path[shadow_num-1].remove();
+            for(let i=shadow_num-1;i>=1;i--){
+                pre_door_path[i]=pre_door_path[i-1];
+                pre_door_path[i].opacity=(shadow_num-i)/(shadow_num+1);
+            }
+            pre_door_path[0]=door_path.clone();
+            pre_door_path[0].opacity=shadow_num/(shadow_num+1);
+            let door_i = door_path.segments[0].point;
+            let door_j = door_path.segments[1].point;
+            let door_mid = door_i.add(door_j).divide(2);
+            let door_v = door_j.subtract(door_mid);
+            // console.log(door_i.x+","+door_i.y+" -> "+door_j.x+","+door_j.y);
+
+            if(grab_line!=null){    //apply force
+                let start_point = grab_line.segments[0].point;  //the point on the door
+                let end_point = grab_line.segments[1].point;    //the point of the mouse
+                let v = end_point.subtract(start_point);
+                //the point of rotation is off the door
+                let rot_point = new Point([door_j.x,door_i.y]);
+                let torque = v.cross(start_point.subtract(rot_point));
+                door_angular_velocity -= torque/800000;
+            }
+            door_angle += door_angular_velocity;
+            //bounce
+            if(door_angle<0){
+                door_angle=0;
+                door_angular_velocity*=-0.3;
+            }
+            if(door_angle>Math.PI/2){
+                door_angle=Math.PI/2;
+                door_angular_velocity*=-0.3;
+            }
+            //magnet
+            let tiny_amount = 0.1;
+            if(door_angle<tiny_amount){
+                door_angular_velocity -= 0.001;
+            }
+            if(door_angle>Math.PI/2-tiny_amount){
+                door_angular_velocity += 0.001;
+            }
+            door_angular_velocity*=0.99;
+            //now put the new door on the walls
+            door_j.x=center.x-half_width+door_width*Math.cos(door_angle);
+            door_i.y=center.y+half_width-door_width*Math.sin(door_angle);
+            //and place the start_point on the door
+            if(grab_line!=null){
+                let start_point = grab_line.segments[0].point;  //the point on the door
+                let new_start_point = door_i.multiply(1-grab_x).add(door_j.multiply(grab_x));
+                start_point.x = new_start_point.x;
+                start_point.y = new_start_point.y;
+            }
+        }
+        scope1.view.play();
+
+        //Second picture: the door's trajectory and bounding line
+        let scope2 = new paper.PaperScope();
+        scope2.setup("pic2");
+        scope2.activate();
+        let orm = 100;
+        let origin = new Point([orm,485-orm]);
+
+        let axis = new CompoundPath({
+            children:[
+                new Path.Line([origin.x,0],[origin.x,490]),
+                new Path.Line([0,origin.y],[490,origin.y])
+            ],
+            strokeColor : '#999999',
+            strokeWidth : 3
+        });
+
+
+        let line_length = 300;
+        let line = new Path({
+            segments:[[origin.x,origin.y-line_length],[origin.x,origin.y]],
+            strokeColor: '#3399ff',
+            strokeWidth: 6,
+            strokeCap: 'round'
+        });
+
+        let num = 60;
+        let curve = new Path({
+            segments:[  new Segment([origin.x,origin.y-line_length],null,[0,num]),
+                        new Segment([origin.x+line_length/2*Math.SQRT1_2,origin.y-line_length/2*Math.SQRT1_2],[-num*Math.SQRT1_2,-num*Math.SQRT1_2],[num*Math.SQRT1_2,num*Math.SQRT1_2]),
+                        new Segment([origin.x+line_length,origin.y],[-num,0],null)],
+            strokeColor: '#3399ff',
+            strokeWidth: 5,
+            strokeCap: 'round'
+        })
+
+        function setLineAngle(tline,theta){//in radians
+            tline.segments[0].point.x = origin.x;
+            tline.segments[0].point.y = origin.y-line_length*Math.sin(theta);
+            tline.segments[1].point.x = origin.x+line_length*Math.cos(theta);
+            tline.segments[1].point.y = origin.y;
+        }
+
+        let line_num = 15;
+        let line_arr = new Array();
+        let ang_arr = new Array();
+        for(let i=1;i<line_num;i++){
+            let dline = line.clone();
+            dline.strokeColor = '#80ccff';
+            dline.strokeWidth = 3;
+            setLineAngle(dline,Math.PI/2/line_num*(line_num-i));
+            line_arr.push(dline);
+            ang_arr.push(Math.PI/2/line_num*(line_num-i));
+            dline.visible = false;
+        }
+        //console.log(ang_arr);
+        scope2.project.activeLayer.addChild(axis);
+        scope2.project.activeLayer.addChild(line);
+        scope2.project.activeLayer.addChild(curve);
+
+        let dir = 1,pos = 0;
+        scope2.view.onFrame=(event)=>{
+            //make the animation move
+            let time = event.time;
+            let timePerShift = 3;
+            let tic = (Math.sin((time+timePerShift/2)*Math.PI/timePerShift)+1)/2;
+            let ang = Math.PI/2*tic;
+            if(dir==1){
+                while(ang<ang_arr[pos] && pos<line_num-1){
+                    line_arr[pos].visible=true;
+                    pos++;
+                }
+                if(pos==line_num-1){
+                    pos--;
+                    dir=0;
+                }
+            }
+            else{
+                while(ang>ang_arr[pos] & pos>=0){
+                    line_arr[pos].visible=false;
+                    pos--;
+                }
+                if(pos==-1){
+                    pos++;
+                    dir=1;
+                }
+            }
+            setLineAngle(line,ang);
+            curve.opacity=(1-tic);
+        }
+        scope2.view.play();
+
+        //Third picture: a point inside a line
+        let scope3 = new paper.PaperScope();
+        scope3.setup("pic3");
+        scope3.activate();
+
+        axis.copyTo(scope3.project);
+        curve.copyTo(scope3.project).opacity=0.5;
+
+        let line3 = new Path({
+            segments:[[origin.x,origin.y-line_length],[origin.x,origin.y]],
+            strokeColor: '#3399ff',
+            strokeWidth: 6,
+            strokeCap: 'round'
+        });
+
+        let point3 = new Path.Circle({
+            center:[150,300],
+            radius:7,
+            strokeWidth:3,
+            strokeColor: '#ff6666'
+        });
+
+        let ang3 = [Math.PI*0.2,Math.PI*0.2,Math.PI*0.2];
+        let cen3 = new Point([150,300]);
+
+        let tickTime3 = 0;
+        let center3;
+
+        scope3.view.onFrame=(event)=>{
+            //make the animation move
+            let time = event.time;
+            if(time>tickTime3+1){
+                tickTime3+=1;
+                ang3[0]=Math.PI*(Math.random()*0.3+0.1);
+            }
+            let p = 0.93;
+            ang3[1]=blend(ang3[0],ang3[1],p);
+            ang3[2]=blend(ang3[1],ang3[2],p);
+            setLineAngle(line3,ang3[2]);
+            center3=origin.add(line3.segments[0].point).add(line3.segments[1].point).divide(3);
+            pointBlend(cen3,center3,cen3,p);
+            pointBlend(point3.position,cen3,point3.position,p);
+        }
+        scope3.view.play();
+
+        //Fourth picture: a point outside a line
+        let scope4 = new paper.PaperScope();
+        scope4.setup("pic4");
+        scope4.activate();
+
+        axis.copyTo(scope4.project);
+        curve.copyTo(scope4.project).opacity=0.5;
+
+        let line4 = new Path({
+            segments:[[origin.x,origin.y-line_length],[origin.x,origin.y]],
+            strokeColor: '#3399ff',
+            strokeWidth: 6,
+            strokeCap: 'round'
+        });
+
+        let point4 = new Path.Circle({
+            center:[250,250],
+            radius:7,
+            strokeWidth:3,
+            strokeColor: '#009900'
+        });
+
+        let ang4 = [Math.PI*0.2,Math.PI*0.2,Math.PI*0.2];
+        let cen4 = new Point([250,250]);
+
+        let tickTime4 = 0;
+        let center4;
+
+        scope4.view.onFrame=(event)=>{
+            //make the animation move
+            let time = event.time;
+            if(time>tickTime4+1){
+                tickTime4+=1;
+                ang4[0]=Math.PI*(Math.random()*0.3+0.1);
+            }
+            let p = 0.93;
+            ang4[1]=blend(ang4[0],ang4[1],p);
+            ang4[2]=blend(ang4[1],ang4[2],p);
+            setLineAngle(line4,ang4[2]);
+            center4=line4.segments[0].point.multiply(2).add(line4.segments[1].point.multiply(2)).subtract(origin).divide(3);
+            pointBlend(cen4,center4,cen4,p);
+            pointBlend(point4.position,cen4,point4.position,p);
+        }
+        scope4.view.play();
+
+        //Fifth picture: a movable point with automatic line movements
+        let scope5 = new paper.PaperScope();
+        scope5.setup("pic5");
+        scope5.activate();
+
+        axis.copyTo(scope5.project);
+        let curve5 = curve.copyTo(scope5.project);
+        curve5.opacity = 0.5;
+
+        let line5 = new Path({
+            segments:[[origin.x,origin.y-line_length],[origin.x,origin.y]],
+            strokeColor: '#3399ff',
+            strokeWidth: 6,
+            strokeCap: 'round'
+        });
+
+        let point5 = new Path.Circle({
+            center:[300,200],
+            radius:7,
+            strokeWidth:3,
+            strokeColor: '#009900'
+        });
+
+        new Path.Rectangle({
+            point:origin.add([0,-line_length]),
+            size:[line_length,line_length],
+            strokeColor: '#cccccc',
+            fillColor: '#cccccc',
+            opacity:0.25
+        });
+
+        let tool5 = new Tool();
+        let grabbed = false;
+        tool5.onMouseDown= (event)=>{
+            //console.log(event.point);
+            if(event.point.subtract(point5.position).length<=10){
+                grabbed = true;
+                point5.position = event.point;
+            }
+            else grabbed = false;
+        }
+        tool5.onMouseDrag= (event)=>{
+            if(!grabbed) return;
+            point5.position.x = event.point.x;
+            point5.position.y = event.point.y;
+            if(point5.position.x<origin.x+7) point5.position.x=origin.x+7;
+            if(point5.position.x>origin.x+line_length-7) point5.position.x=origin.x+line_length-7;
+            if(point5.position.y>origin.y-7) point5.position.y=origin.y-7;
+            if(point5.position.y<origin.y-line_length+7) point5.position.y=origin.y-line_length+7;
+
+        }
+        tool5.onMouseUp= (event)=>{
+            grabbed = false;
+        }
+
+        let ang5=Math.PI/4;
+        setLineAngle(line5,ang5);
+
+        let prePos5 = point5.position.clone();
+        let vel5 = new Point(0,0);
+        //note: add d and new plot of theta and d
+        scope5.view.onFrame=(event)=>{
+            //change point color and line angle according to point position
+            let x = point5.position.x;
+            let y = point5.position.y;
+            x = (x - origin.x)/line_length;
+            y = (origin.y - y)/line_length;
+            //calculate new ang5
+            let len = Math.sqrt(x*x+y*y);
+            let phi = Math.acos(y/len);
+            let val = Math.cos(2*ang5)+len*Math.sin(ang5-phi);
+            let dval = -2*Math.sin(2*ang5)+len*Math.cos(ang5-phi);
+            ang5 = ang5 - val/dval;
+            let eps = 0.05;
+            if(ang5 > Math.PI/2 - eps) ang5 = Math.PI/2-eps;
+            if(ang5 < eps) ang5 = eps;
+            setLineAngle(line5,ang5);
+            let dis = x*Math.sin(ang5)+y*Math.cos(ang5)-Math.sin(ang5)*Math.cos(ang5);
+            dis*=line_length;
+            if(dis >= 10) point5.strokeColor='#009900';
+            else if (dis <= -10) point5.strokeColor='#ff6666';
+            else point5.strokeColor='#66b3ff';
+            //move point5 towards the curve
+            if(grabbed) return;
+            let line_i = line5.segments[0].point;
+            let line_j = line5.segments[1].point;
+            let v1 = line_j.subtract(line_i);
+            let v2 = point5.position.subtract(line_i);
+            x = clip(v1.dot(v2)/(v1.x*v1.x+v1.y*v1.y),0,1);
+            let v = line_i.add(v1.multiply(x));
+            // new Path.Line({
+            //     from:v,
+            //     to:point5.position,
+            //     strokeColor:'red'
+            // });
+            vel5 = vel5.add(point5.position.subtract(v).multiply(-0.01)).multiply(0.95);
+            prePos5.x = point5.position.x;
+            prePos5.y = point5.position.y;
+            point5.position.x = prePos5.x+vel5.x;
+            point5.position.y = prePos5.y+vel5.y;
+            if(point5.position.x<origin.x+7) point5.position.x=origin.x+7,vel5.x=-vel5.x*0.8;
+            if(point5.position.x>origin.x+line_length-7) point5.position.x=origin.x+line_length-7,vel5.x=-vel5.x*0.8;
+            if(point5.position.y>origin.y-7) point5.position.y=origin.y-7,vel5.y=-vel5.y*0.8;
+            if(point5.position.y<origin.y-line_length+7) point5.position.y=origin.y-line_length+7,vel5.y=-vel5.y*0.8;
+        }
+        scope5.view.play();
+
+        //Sixth picture: after calculating the formula, show the point's movement
+        let scope6 = new paper.PaperScope();
+        scope6.setup("pic6");
+        scope6.activate();
+
+        axis.copyTo(scope6.project);
+        let curve6 = curve5.copyTo(scope6.project);
+
+        let line6 = new Path({
+            segments:[[origin.x,origin.y-line_length],[origin.x,origin.y]],
+            strokeColor: '#3399ff',
+            strokeWidth: 6,
+            strokeCap: 'round'
+        });
+
+        let point6 = new Path.Circle({
+            center:[200,300],
+            radius:7,
+            strokeWidth:3,
+            strokeColor: '#66b3ff'
+        });
+
+        new Path.Rectangle({
+            point:origin.add([0,-line_length]),
+            size:[line_length,line_length],
+            strokeColor: '#cccccc',
+            fillColor: '#cccccc',
+            opacity:0.25
+        });
+
+        let ang6=Math.PI/4;
+        setLineAngle(line6,ang6);
+
+        let tool6 = new Tool();
+        goal_point = null;
+        goal_num = 0;
+        tool6.onMouseDown= (event)=>{
+            let pnt = event.point;
+            let pnt6 = pnt.subtract(origin).divide(line_length);
+            pnt6.y = -pnt6.y;
+            if(pnt.subtract(point6.position).length < 10){
+                goal_num=1;
+                point6.strokeColor = '#0059b3';
+                goal_point = pnt;
+            }
+            else if(Math.abs(pnt6.x*Math.sin(ang6)+pnt6.y*Math.cos(ang6)-Math.sin(ang6)*Math.cos(ang6))<5){
+                goal_num=2;
+                line6.strokeColor = '#0066cc';
+                goal_point = pnt;
+            }
+        }
+        tool6.onMouseDrag= (event)=>{
+            if(goal_num!=0){
+                goal_point=event.point;
+            }
+        }
+        tool6.onMouseUp= (event)=>{
+            goal_num=0;
+            line6.strokeColor = '#3399ff';
+            point6.strokeColor = '#66b3ff';
+            goal_point = null;
+        }
+
+        scope6.view.onFrame=(event)=>{
+            //change angle near goal
+            if(goal_num==1){
+                let pnt6 = goal_point.subtract(origin).divide(line_length);
+                pnt6.y = -pnt6.y;
+                //console.log(pnt6);
+                let len = goal_point.subtract(point6.position).length/line_length;
+                //console.log(len);
+                let dlen = -3*Math.sin(2*ang6)*(-pnt6.x*Math.cos(ang6)+pnt6.y*Math.sin(ang6)+Math.cos(2*ang6))/(2*len);
+                //console.log(dlen);
+                ang6 = ang6 - dlen*0.1*len;
+                ang6 = clip(ang6, 0.01, Math.PI/2-0.01);
+            }
+            if(goal_num==2){
+                let pnt6 = goal_point.subtract(origin).divide(line_length);
+                pnt6.y = -pnt6.y;
+                let len = pnt6.x*Math.sin(ang6)+pnt6.y*Math.cos(ang6)-Math.sin(ang6)*Math.cos(ang6);
+                let dlen = pnt6.x*Math.cos(ang6)-pnt6.y*Math.sin(ang6)-Math.cos(2*ang6);
+                ang6 = ang6 - dlen*0.2*len;
+                ang6 = clip(ang6, 0.01, Math.PI/2-0.01);
+            }
+            //move point and line to angle
+            setLineAngle(line6,ang6);
+            point6.position = new Point([cube(Math.cos(ang6)),-cube(Math.sin(ang6))]).multiply(line_length).add(origin);
+            //show some data
+        }
+        scope6.view.play();
+        
+        //Seventh picture: a rectangle suddenly appears
+        let scope7 = new paper.PaperScope();
+        scope7.setup("pic7");
+        scope7.activate();
+
+        axis.copyTo(scope7.project);
+        let curve7 = curve5.copyTo(scope7.project);
+
+        let line7 = new Path({
+            segments:[[origin.x,origin.y-line_length],[origin.x,origin.y]],
+            strokeColor: '#3399ff',
+            strokeWidth: 6,
+            strokeCap: 'round'
+        });
+
+        let point7 = new Path.Circle({
+            center:[200,300],
+            radius:7,
+            strokeWidth:3,
+            strokeColor: '#66b3ff'
+        });
+
+        new Path.Rectangle({
+            point:origin.add([0,-line_length]),
+            size:[line_length,line_length],
+            strokeColor: '#cccccc',
+            fillColor: '#cccccc',
+            opacity:0.25
+        });
+
+        let handle7 = new Path.Circle({
+            center:[200,300],
+            radius:12,
+            strokeWidth:2,
+            strokeColor: '#404040',
+            fillColor: '#e6e6e6'
+        });
+
+
+        let shade7 = new Path.Rectangle({
+            rectangle: new Rectangle(origin,handle7.position),
+            fillColor: '#cccccc',
+            opacity:0.5
+        });
+
+        let ang7=Math.PI/4;
+        setLineAngle(line7,ang7);
+        handle7.position = origin.add([line_length*Math.cos(ang7),-line_length*Math.sin(ang7)]);
+        shade7.remove();
+        shade7 = new Path.Rectangle({
+            rectangle: new Rectangle(origin,handle7.position),
+            fillColor: '#cccccc',
+            opacity:0.5
+        });
+
+        let sign7 = new Path.Line({
+            from:point7.position,
+            to:handle7.position,
+            strokeColor: '#ff1a1a',
+            strokeWidth:3
+        })
+
+        scope7.project.activeLayer.addChild(sign7);
+        scope7.project.activeLayer.addChild(handle7);
+        scope7.project.activeLayer.addChild(curve7);
+        scope7.project.activeLayer.addChild(line7);
+        scope7.project.activeLayer.addChild(point7);
+
+        let tool7 = new Tool();
+        goal_point = null;
+        goal_num = 0;
+        tool7.onMouseDown= (event)=>{
+            let pnt = event.point;
+            let pnt7 = pnt.subtract(origin).divide(line_length);
+            pnt7.y = -pnt7.y;
+            if(pnt.subtract(point7.position).length < 10){
+                goal_num=1;
+                point7.strokeColor = '#0059b3';
+                goal_point = pnt;
+            }
+            else if(pnt.subtract(handle7.position).length < 30){
+                goal_num=3;
+                handle7.fillColor = '#ffffff';
+                goal_point = pnt;
+            }
+            else if(Math.abs(pnt7.x*Math.sin(ang7)+pnt7.y*Math.cos(ang7)-Math.sin(ang7)*Math.cos(ang7))<1){
+                goal_num=2;
+                line7.strokeColor = '#0066cc';
+                goal_point = pnt;
+            }
+            
+        }
+        tool7.onMouseDrag= (event)=>{
+            if(goal_num!=0){
+                goal_point=event.point;
+            }
+        }
+        tool7.onMouseUp= (event)=>{
+            goal_num=0;
+            line7.strokeColor = '#3399ff';
+            point7.strokeColor = '#66b3ff';
+            handle7.fillColor = '#e6e6e6';
+            goal_point = null;
+        }
+
+        scope7.view.onFrame=(event)=>{
+            //change angle near goal
+            if(goal_num==1){
+                let pnt7 = goal_point.subtract(origin).divide(line_length);
+                pnt7.y = -pnt7.y;
+                //console.log(pnt7);
+                let len = goal_point.subtract(point7.position).length/line_length;
+                //console.log(len);
+                let dlen = -3*Math.sin(2*ang7)*(-pnt7.x*Math.cos(ang7)+pnt7.y*Math.sin(ang7)+Math.cos(2*ang7))/(2*len);
+                //console.log(dlen);
+                ang7 = ang7 - dlen*0.1*len;
+                ang7 = clip(ang7, 0.01, Math.PI/2-0.01);
+            }
+            if(goal_num==2){
+                let pnt7 = goal_point.subtract(origin).divide(line_length);
+                pnt7.y = -pnt7.y;
+                let len = pnt7.x*Math.sin(ang7)+pnt7.y*Math.cos(ang7)-Math.sin(ang7)*Math.cos(ang7);
+                let dlen = pnt7.x*Math.cos(ang7)-pnt7.y*Math.sin(ang7)-Math.cos(2*ang7);
+                ang7 = ang7 - dlen*0.2*len;
+                ang7 = clip(ang7, 0.01, Math.PI/2-0.01);
+            }
+            if(goal_num==3){
+                ang7 = - goal_point.subtract(origin).angleInRadians;
+                ang7 = clip(ang7, 0.01, Math.PI/2-0.01);
+            }
+            //move point and line to angle
+            setLineAngle(line7,ang7);
+            point7.position = new Point([cube(Math.cos(ang7)),-cube(Math.sin(ang7))]).multiply(line_length).add(origin);
+            handle7.position = origin.add([line_length*Math.cos(ang7),-line_length*Math.sin(ang7)]);
+            shade7.remove();
+            shade7 = new Path.Rectangle({
+                rectangle: new Rectangle(origin,handle7.position),
+                fillColor: '#cccccc',
+                opacity:0.5
+            });
+            shade7.insertBelow(sign7);
+            sign7.segments[0].point=point7.position;
+            sign7.segments[1].point=handle7.position;
+            //show some data
+        }
+        scope7.view.play();
+
+        //Eighth picture: showing that ellipses are generated with fixed points
+        let scope8 = new paper.PaperScope();
+        scope8.setup("pic8");
+        scope8.activate();
+
+        axis.copyTo(scope8.project);
+        new Path.Rectangle({
+            point:origin.add([0,-line_length]),
+            size:[line_length,line_length],
+            strokeColor: '#cccccc',
+            fillColor: '#cccccc',
+            opacity:0.25
+        });
+        let curve8 = curve5.copyTo(scope8.project);
+
+        let line8 = new Path({
+            segments:[[origin.x,origin.y-line_length],[origin.x,origin.y]],
+            strokeColor: '#3399ff',
+            strokeWidth: 6,
+            strokeCap: 'round',
+        });
+
+        let point8 = new Path.Circle({
+            center:[200,300],
+            radius:7,
+            strokeWidth:3,
+            strokeColor: '#66b3ff'
+        });
+
+        let ellipse8 = new Path.Ellipse({
+            center:origin,
+            size:[100,100],
+            strokeColor: '#3399ff',
+            strokeWidth: 6,
+            opacity:0.3
+        });
+
+
+        // scope8.project.activeLayer.addChild(curve8);
+        // scope8.project.activeLayer.addChild(line8);
+        // scope8.project.activeLayer.addChild(point8);
+        let ang8 = Math.PI/4;
+        let pro8 = 0.5;
+
+        let tool8 = new Tool();
+        goal_point = null;
+        goal_num = 0;
+        tool8.onMouseDown= (event)=>{
+            let pnt = event.point;
+            let pnt8 = pnt.subtract(origin).divide(line_length);
+            pnt8.y = -pnt8.y;
+            if(pnt.subtract(point8.position).length < 10){
+                goal_num=1;
+                point8.strokeColor = '#ff1a1a';
+                goal_point = pnt;
+            }
+            else if(Math.abs(pnt8.x*Math.sin(ang8)+pnt8.y*Math.cos(ang8)-Math.sin(ang8)*Math.cos(ang8))<5){
+                goal_num=2;
+                line8.strokeColor = '#0066cc';
+                goal_point = pnt;
+            }
+        }
+        tool8.onMouseDrag= (event)=>{
+            if(goal_num!=0){
+                goal_point=event.point;
+            }
+        }
+        tool8.onMouseUp= (event)=>{
+            goal_num=0;
+            line8.strokeColor = '#3399ff';
+            point8.strokeColor = '#66b3ff';
+            goal_point = null;
+        }
+
+        scope8.view.onFrame=(event)=>{
+            //change angle near goal
+            if(goal_num == 1){
+                //don't move line, move grab_num
+                let line_i = line8.segments[0].point;
+                let line_j = line8.segments[1].point;
+                let v1 = line_j.subtract(line_i);
+                let v2 = goal_point.subtract(line_i);
+                pro8 = clip(v1.dot(v2)/(v1.x*v1.x+v1.y*v1.y),0,1);
+            }
+            if(goal_num == 2){
+                let pnt8 = goal_point.subtract(origin).divide(line_length);
+                pnt8.y = -pnt8.y;
+                let len = pnt8.x*Math.sin(ang8)+pnt8.y*Math.cos(ang8)-Math.sin(ang8)*Math.cos(ang8);
+                let dlen = pnt8.x*Math.cos(ang8)-pnt8.y*Math.sin(ang8)-Math.cos(2*ang8);
+                ang8 = ang8 - dlen*0.2*len;
+                ang8 = clip(ang8, 0.01, Math.PI/2-0.01);
+            }
+            //show some data
+            setLineAngle(line8,ang8);
+            pointBlend(point8.position,line8.segments[0].point,line8.segments[1].point,pro8);
+            let x = point8.position.x;
+            let y = point8.position.y;
+            x = (x - origin.x)/line_length;
+            y = (origin.y - y)/line_length;
+            let dis = Math.sqrt(square(x-cube(Math.cos(ang8)))+square(y-cube(Math.sin(ang8))));
+            dis*=line_length;
+            if(dis >= 20 && goal_num!=1) point8.strokeColor='#ff6666';
+            else if(dis<20) point8.strokeColor='#66b3ff';
+            else point8.strokeColor='#ff1a1a';
+            let lambda = pro8;
+            ellipse8.remove();
+            ellipse8 = new Path.Ellipse({
+                center:origin,
+                size:[line_length*lambda*2,line_length*(1-lambda)*2],
+                strokeColor: '#33ffd6',
+                strokeWidth: 6,
+                opacity:0.5
+            });
+            scope8.project.activeLayer.addChild(point8);
+        }
+        scope8.view.play();
+
+        
+        //Ninth picture: a movable point with automatic ellipse movements
+        //do I really need to draw the lines?
+        let scope9 = new paper.PaperScope();
+        scope9.setup("pic9");
+        scope9.activate();
+
+        axis.copyTo(scope9.project);
+        let curve9 = curve.copyTo(scope9.project);
+        curve9.opacity = 0.5;
+
+        let line9 = new Path({
+            segments:[[origin.x,origin.y-line_length],[origin.x,origin.y]],
+            strokeColor: '#3399ff',
+            strokeWidth: 6,
+            strokeCap: 'round',
+            opacity:0.15
+        });
+
+        let point9 = new Path.Circle({
+            center:[300,200],
+            radius:7,
+            strokeWidth:3,
+            strokeColor: '#009900'
+        });
+
+        let ellipse9 = new Path.Ellipse({
+            center:origin,
+            size:[100,100],
+            strokeColor: '#3399ff',
+            strokeWidth: 6,
+        });
+
+        let back9 = new Path.Rectangle({
+            point:origin.add([0,-line_length]),
+            size:[line_length,line_length],
+            strokeColor: '#cccccc',
+            fillColor: '#cccccc',
+            opacity:0.25
+        });
+
+        let tool9 = new Tool();
+        grabbed = false;
+        tool9.onMouseDown= (event)=>{
+            //console.log(event.point);
+            if(event.point.subtract(point9.position).length<=10){
+                grabbed = true;
+                point9.position = event.point;
+            }
+            else grabbed = false;
+        }
+        tool9.onMouseDrag= (event)=>{
+            if(!grabbed) return;
+            point9.position.x = event.point.x;
+            point9.position.y = event.point.y;
+            if(point9.position.x<origin.x+7) point9.position.x=origin.x+7;
+            if(point9.position.x>origin.x+line_length-7) point9.position.x=origin.x+line_length-7;
+            if(point9.position.y>origin.y-7) point9.position.y=origin.y-7;
+            if(point9.position.y<origin.y-line_length+7) point9.position.y=origin.y-line_length+7;
+
+        }
+        tool9.onMouseUp= (event)=>{
+            grabbed = false;
+        }
+
+        let ang9=Math.PI/4;
+        setLineAngle(line9,ang9);
+
+        let prePos9 = point9.position.clone();
+        let vel9 = new Point(0,0);
+        scope9.view.onFrame=(event)=>{
+            //change point color and line angle according to point position
+            let x = point9.position.x;
+            let y = point9.position.y;
+            x = (x - origin.x)/line_length;
+            y = (origin.y - y)/line_length;
+            //calculate new ang9
+            let len = Math.sqrt(x*x+y*y);
+            let phi = Math.acos(y/len);
+            let val = Math.cos(2*ang9)+len*Math.sin(ang9-phi);
+            let dval = -2*Math.sin(2*ang9)+len*Math.cos(ang9-phi);
+            ang9 = ang9 - val/dval;
+            let eps = 0.05;
+            if(ang9 > Math.PI/2 - eps) ang9 = Math.PI/2-eps;
+            if(ang9 < eps) ang9 = eps;
+            setLineAngle(line9,ang9);
+            ellipse9.remove();
+            let tmp = Math.cos(ang9)*Math.cos(ang9);
+            ellipse9 = new Path.Ellipse({
+                center:origin,
+                size:[line_length*tmp*2,line_length*(1-tmp)*2],
+                strokeColor: '#3399ff',
+                strokeWidth: 6,
+            });
+            tmp = ellipse9.intersect(back9);
+            ellipse9.remove();
+            ellipse9=tmp;
+
+            scope9.project.activeLayer.addChild(point9);
+
+            let dis = x*Math.sin(ang9)+y*Math.cos(ang9)-Math.sin(ang9)*Math.cos(ang9);
+            dis*=line_length;
+            if(dis >= 10) point9.strokeColor='#009900';
+            else if (dis <= -10) point9.strokeColor='#ff6666';
+            else point9.strokeColor='#66b3ff';
+            //move point9 towards the curve
+            if(grabbed) return;
+            let line_i = line9.segments[0].point;
+            let line_j = line9.segments[1].point;
+            let v1 = line_j.subtract(line_i);
+            let v2 = point9.position.subtract(line_i);
+            x = clip(v1.dot(v2)/(v1.x*v1.x+v1.y*v1.y),0,1);
+            let v = line_i.add(v1.multiply(x));
+            // new Path.Line({
+            //     from:v,
+            //     to:point9.position,
+            //     strokeColor:'red'
+            // });
+            vel9 = vel9.add(point9.position.subtract(v).multiply(-0.01)).multiply(0.95);
+            prePos9.x = point9.position.x;
+            prePos9.y = point9.position.y;
+            point9.position.x = prePos9.x+vel9.x;
+            point9.position.y = prePos9.y+vel9.y;
+            if(point9.position.x<origin.x+7) point9.position.x=origin.x+7,vel9.x=-vel9.x*0.8;
+            if(point9.position.x>origin.x+line_length-7) point9.position.x=origin.x+line_length-7,vel9.x=-vel9.x*0.8;
+            if(point9.position.y>origin.y-7) point9.position.y=origin.y-7,vel9.y=-vel9.y*0.8;
+            if(point9.position.y<origin.y-line_length+7) point9.position.y=origin.y-line_length+7,vel9.y=-vel9.y*0.8;
+        }
+        scope9.view.play();
+    }
+</script>
+
+<h1>滑动门与贝塞尔曲线（一）</h1>
+<p>本文是对于动态的数学解释的探索。</p>
+<p>也就是说，这篇文章里的图片会动。试试吧！</p>
+<h2>一个滑动门</h2>
+<p>首先，还没有看过这个视频的同学可以点击这个小红书的链接，来看一眼这个设计感很强的滑动门。</p>
+<a href="https://www.xiaohongshu.com/explore/6380759d000000001f009de6" target="_blank">
+    <div style="text-align: center;">
+        <img src="slide_door.webp" alt="点我前往" style="width:320px;height:427px;">
+        ←点它
+    </div>
+</a>
+<p>看上去很棒！这样的设计不仅利于清洁，同时相当漂亮。</p>
+<p>这篇文章希望通过使用数学与计算机方法，对于这个门的一些数学特点进行建模、分析。</p>
+
+<script>
+</script>
+<h2>第一步，抽象</h2>
+<p>解决问题之前，先要找到问题。把门与玻璃墙抽象成线段，我们很容易可以得到视频中展示的浴室的模型。</p>
+<canvas id="pic1" height="480" width="480"></canvas>
+<p style="width: 480px;margin-left: auto;margin-right: auto;">（拉一拉门，试试看！）</p>
+
+<p>通过两个可以改变转动方向的滑轮，门被固定在两面玻璃墙上下的滑轨之间，这使其能在两面墙之间滑动。
+所以，我们可以将其抽象为一条两个端点都在坐标轴上的定长线段。</p>
+<p>自然而然地，我们想研究这个模型中出现的现象。</p>
+<canvas id="pic2" height="480" width="480"></canvas>
+<p>值得我们关注的是这个门（线条）划过的区域。从我们目测可以看出，区域的包络线与两条坐标轴都相切，但很显然不是一个圆形：
+这与我们熟知的任何一条曲线都不同。那这到底是一条什么曲线？</p>
+
+<h2>怎么生成曲线</h2>
+<blockquote>
+    What I cannot create, I do not understand.
+    <div style="text-align: end;">--- Richard Feynman</div>
+</blockquote>
+<p>看上去，我们已经知道了这个曲线的生成方法：根据动画中的方法，一条一条堆叠线段，得到的边界就<b>几乎</b>是我们关心的曲线。</p>
+<p>但我们也知道，线段相交只能生成折线，通过这种方法，我们永远得不到一条曲线，只能不断逼近。</p>
+<p>所以要生成一条曲线，还得另寻他路。</p>
+
+<h3>一种代数方法</h3>
+<p>寻找曲线上的点很难。我们换一种思路：找不在曲线上的点。</p>
+<p>对于一条给定的线段，有哪些点是不在包络线上的？</p>
+<p>对任意一个点，只要有另一条线使得<b>它在这条线段的内部</b>，那么这个点就不在包络线上，它在包络线内。</p>
+<p>在这里，“内部”定义为与坐标系原点同侧。</p>
+<canvas id="pic3" height="480" width="480"></canvas>
+<p>而如果对所有线段，这个点都在外部，那么它也不在包络线上。</p>
+<canvas id="pic4" height="480" width="480"></canvas>
+<p>也就是说，只有那些恰在一条直线上，并且在所有其他直线外的点才属于我们希望了解的曲线。</p>
+<canvas id="pic5" height="480" width="480"></canvas>
+<!--可以继续加入的内容：显示角度-->
+<p style="width: 480px;margin-left: auto;margin-right: auto;">（拖一拖，看看我们想要的点是哪些？）</p>
+
+<p>知道了方法以后，我们就可以开始用数学的语言描述这个问题了。</p>
+<p>不妨假定线段长为1。任意一条线段，我们都能用它与坐标轴x轴的夹角（绿色的角）表示其位置，
+    我们把这个角称为\(\theta\)。这样一来，直线的方程为：</p>
+<p>\[ f(x,y) = x \sin\theta + y \cos\theta - \sin\theta \cos\theta = 0 \quad (\theta \in [0,\frac{\pi}{2}])\]</p>
+<p>对于任意一个点\( (x_0,y_0) \)，它到直线的有向距离就是：</p>
+<p>\[ l = \frac{x_0 \sin\theta + y_0 \cos\theta - \sin\theta \cos\theta}{\sqrt{\sin^2\theta+\cos^2\theta}} 
+    = x_0 \sin\theta + y_0 \cos\theta - \sin\theta \cos\theta = f(x_0,y_0) \]</p>
+<p>对于包络线内部的点，这个值可以取负。我们希望找到所有的点，使得这个式子的最小值也非负。所以，求个导：</p>
+<p>\[ \frac{\mathrm{d} l}{\mathrm{d} \theta} = x \cos\theta -y \sin \theta -\cos 2 \theta \]</p>
+<p>当导数为0时，距离在某一个\(\theta\)处取到极值，这个时候点就在线上。于是可以列出方程组：</p>
+<p>\[
+    \left\{\begin{matrix}
+    x \cos\theta -y \sin \theta -\cos 2 \theta=0
+    \\
+    \space x \sin\theta + y \cos\theta - \sin\theta \cos\theta = 0
+    \end{matrix}\right.
+    \]</p>
+<p>解此一元一次方程组就能得到点坐标：</p>
+<p>\[
+    \left\{\begin{matrix}
+    \space x =\cos^3\theta 
+    \\
+    \space y =\sin^3\theta 
+    \end{matrix}\right.
+    \]</p>
+<p>这个表示很漂亮！一条直线恰好对应一个点，这个事实也在我们算出来的式子中被反映出来了。</p>
+<canvas id="pic6" height="480" width="480"></canvas>
+<p style="width: 480px;margin-left: auto;margin-right: auto;">（有了公式以后，我们就能保证点落在曲线上了。）</p>
+<!--可以继续加入的内容：显示一些数据的数值-->
+<p>代数表示有时能让我们看到意料之外的几何关系。我们看看这个点到线段两端的距离：</p>
+<p>\[
+    \begin{align*}
+    l_1 & =  \sqrt{(\cos ^3\theta)^2+(\sin \theta -\sin ^3\theta )^2}\\
+    & =  \sqrt{(\cos ^3\theta)^2+\sin^2\theta (1 -\sin ^2\theta )^2}\\
+    & =  \cos^2\theta \sqrt{\cos ^2\theta+\sin^2\theta }\\
+    & =  \cos^2\theta \\
+    \end{align*}
+    \]
+</p>
+<p>
+    \[\begin{align*}
+    l_2 & =  1-l_1\\
+    &= \sin^2\theta 
+    \end{align*}\]
+</p>
+<p>这说明：</p>
+<canvas id="pic7" height="480" width="480"></canvas>
+<p style="width: 480px;margin-left: auto;margin-right: auto;">（再挪挪试试？）</p>
+<p>如果把原点与线段所在的直角三角形补充成一个长方形，我们可以看到，包络线上的点就落在新顶点到线段的垂足上！</p>
+<p>看到这个，不找找这包络线的纯几何构造方法都有点让人感到可惜。</p>
+<h3>另一种代数方法</h3>
+<p>当然我们还没有穷尽代数方法的全部潜能，不妨先再来一种代数方法，找找感觉。</p>
+<p>之前我们求包络线上的点的思路是：固定线段，寻找点与包络线的关系。</p>
+<p>所以我们换个思路：固定线段上的点，寻找线段与包络线的关系。</p>
+<canvas id="pic8" height="480" width="480"></canvas>
+<p style="width: 480px;margin-left: auto;margin-right: auto;">（拖一拖，看看固定一个点以后发生了什么？）</p>
+<p>我们固定一个点，就是将其在上下端点之间的比例保持不变。高中知识告诉我们，得到的曲线是一个椭圆。从刚刚的动画中我们也能看出，
+    每一个椭圆上只有一条切线的切点在包络线上，直线的包络线就是椭圆的包络线。
+</p>
+<p>那这个点是哪一个？上面的推理大家应该还记得，通过类似的思考（留给读者作为练习），我们也可以知道：</p>
+<p>恰有一个切点不在任意其他椭圆上，这个点就是我们想知道的包络线上的点。</p>
+<canvas id="pic9" height="480" width="480"></canvas>
+<p>想清楚了就开算。假设点与上面线段之间的距离为\(\lambda\)，那么椭圆的方程就是：</p>
+<p>\[f(x,y)=\frac{x^2}{\lambda^2}+\frac{y^2}{(1-\lambda)^2}=1\quad(\lambda\in(0,1))\]</p>
+<p>使得这个函数值大于1的点在椭圆外。所以我们要找的点对于所有\(\lambda\)都有\(f(x,y)\ge1\)，且恰在该点处取到1。
+    处理方法与上面相同。</p>
+<p>\[ \frac{\mathrm{d} f}{\mathrm{d} \lambda} = -2(\frac{x^2}{\lambda^3}+\frac{y^2}{(\lambda-1)^3}) \]</p>
+<p>这个式子取0时：</p>
+<p>\[\begin{align*}
+    \frac{x^2}{\lambda^3}&=\frac{y^2}{(1-\lambda)^3}\\
+    \frac{y^2}{x^2}&= {(\frac {1-\lambda}{\lambda })}^3\end{align*}\]
+<p>
+<p>带入椭圆的方程，不难看出：</p>
+<p>\[
+    \left\{\begin{align*}
+    \space x^2 &=\lambda^3
+    \\
+    \space y^2 &=(1-\lambda)^3
+    \end{align*}\right.
+    \]</p>
+</p>
+<p>这与我们之前求出的方程是一模一样的：带入\(\lambda=\cos^2\theta\)得到的式子就是我们用第一种方法得到的方程！
+    这个式子也很直接地说明了曲线的解析解：</p>
+<p>\[x^{\frac 2 3}+y^{\frac 2 3}=1\]</p>
+<p>比起刚才的做法，这个方法更具有一般性，求出的曲线覆盖四个象限，刚好弥补了我们对线条倾角\(\theta \in [0,\frac \pi 2]\)硬性规定的不足。</p>
+<p>当然，美中不足在于这种方法还是需要计算，不够优雅。</p>
+<h2>一些小计算</h2>
+<p>有了这些技术支持，我们可以先尝试了解这个图形的一些计算上的性质。假设线段长为1：</p>
+<p>首先，求弧长。</p>
+<p>\[\begin{align*}
+    l &=\int_{0}^{\frac \pi 2} \sqrt{(\mathrm{d}x)^2+(\mathrm{d}y)^2} \\
+    &=\int_{0}^{\frac \pi 2} \sqrt {(\frac {\mathrm{d} x} {\mathrm{d}\theta})^2
+    +(\frac {\mathrm{d} y} {\mathrm{d}\theta})^2}\space \mathrm{d}\theta\\
+    &= \int_{0}^{\frac \pi 2} \sqrt{9\sin^2\theta\cos^4\theta+9\sin^4\theta cos^2\theta}
+    \space\mathrm{d}\theta\\
+    &= \int_{0}^{\frac \pi 2} 3 \sin \theta \cos \theta \space  \mathrm{d}\theta \\
+    &= \int_{0}^{\frac \pi 2} \frac 3 2 \sin 2 \theta \space \mathrm{d}\theta \\
+    &= \int_{0}^{\pi} \frac 3 4 \sin 2 \theta \space \mathrm{d} 2\theta \\
+    &=  \frac 3 4   -\cos \theta  | _0^{\frac \pi 2}\\
+    &= \frac 3 2 
+    \end{align*}\]
+</p>
+<p>然后，求第一象限覆盖面积。</p>
+<p>\[\begin{align*}
+    S &=-\int_{0}^{\frac \pi 2} y\space \mathrm{d}x  \\
+    &=-\int_{0}^{\frac \pi 2} y\space  \frac {\mathrm{d} x} {\mathrm{d}\theta}
+    \space \mathrm{d}\theta\\
+    &=3 \int_{0}^{\frac \pi 2} \sin^4\theta \cos^2\theta   \space \mathrm{d}\theta\\
+    &=3(\int_{0}^{\frac \pi 2} \sin^4\theta  \space \mathrm{d}\theta -
+    \int_{0}^{\frac \pi 2} \sin^6\theta   \space \mathrm{d}\theta)\\
+    &=3(\frac 3 {16}\pi -\frac 5 {32}\pi )\\
+    &= \frac 3 {32} \pi 
+    \end{align*}\]
+</p>
+<p>这里添负号，因为\(\theta\)增加时，\(x\)减小。</p>
+<p>通过微积分的方法，虽然不容易，但是两个数值都能被我们计算。</p>
+<h2>【未完待续】</h2>
+<p>接下来的更新内容：</p>
+<ul>
+    <li>更棒的动态图形</li>
+    <li>一种巧妙的物理解法</li>
+    <li>尽可能不用微积分的重新计算</li>
+    <li>推广：贝塞尔曲线</li>
+</ul>
+<p>欢迎发邮件到rebelpotato@protonmail.com，告诉我你怎么看！</p>
+
+<!-- <h2>致谢</h2> -->
