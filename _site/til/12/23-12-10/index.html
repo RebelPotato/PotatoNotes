@@ -1,0 +1,57 @@
+<h1>eleventy建站第一步</h1>
+<p>今天尝试进行了eleventy建站的第一步。</p>
+<h2>eleventy是什么？</h2>
+<p>eleventy（简写11ty）是一个静态站点生成器。它能够把你写好的html与markdown转成一个网站。在此过程中，它可以给文件添加一些修饰，让它更漂亮，或者获得更多功能。</p>
+<p>新手上路，我目前只会最基本的操作。</p>
+<h2>目前的eleventy配置</h2>
+<p>eleventy的所有配置文件需要放在<code>$notes/.eleventy.js</code>文件里，这些代码会被eleventy读取、运行，用来在转化过程中对网页进行修饰。这个文件里需要导出这样一个函数：</p>
+<pre class="language-js"><code class="language-js">module<span class="token punctuation">.</span><span class="token function-variable function">exports</span> <span class="token operator">=</span> <span class="token keyword">function</span> <span class="token punctuation">(</span><span class="token parameter">eleventyConfig</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token comment">// ...</span>
+<span class="token punctuation">}</span><span class="token punctuation">;</span></code></pre>
+<p>它就是eleventy用来配置的文件。</p>
+<p>我的文章以markdown格式放在<code>$notes/src</code>文件夹里。为此需要函数返回一个描述这一点的Object：</p>
+<pre class="language-js"><code class="language-js"><span class="token keyword">function</span> <span class="token punctuation">(</span><span class="token parameter">eleventyConfig</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token comment">// ...</span>
+    <span class="token comment">// Set custom directories for input, output, includes, and data</span>
+    <span class="token keyword">return</span> <span class="token punctuation">{</span>
+        <span class="token literal-property property">dir</span><span class="token operator">:</span> <span class="token punctuation">{</span>
+            <span class="token literal-property property">input</span><span class="token operator">:</span> <span class="token string">"src"</span><span class="token punctuation">,</span>
+            <span class="token literal-property property">includes</span><span class="token operator">:</span> <span class="token string">"_includes"</span><span class="token punctuation">,</span>
+            <span class="token literal-property property">data</span><span class="token operator">:</span> <span class="token string">"_data"</span><span class="token punctuation">,</span>
+            <span class="token literal-property property">output</span><span class="token operator">:</span> <span class="token string">"_site"</span>
+        <span class="token punctuation">}</span>
+    <span class="token punctuation">}</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span><span class="token punctuation">;</span></code></pre>
+<h3>目录生成</h3>
+<p>eleventy能自动生成目录。这篇文章的开头是这样的：</p>
+<pre class="language-markdown"><code class="language-markdown"><span class="token front-matter-block"><span class="token punctuation">---</span>
+<span class="token front-matter yaml language-yaml">date: 2023-12-10
+title: 用eleventy建站
+tags: til</span>
+<span class="token punctuation">---</span></span>
+
+<span class="token title important"><span class="token punctuation">#</span> eleventy建站第一步</span>
+
+...</code></pre>
+<p>随后只需要在任何一个markdown文件里写下这些代码（去掉所有杠杠，我不知道怎么让11ty看不见形如&quot;{后面跟%&quot;的括号，它会自动当成模板处理）：</p>
+<pre class="language-liquid"><code class="language-liquid">{\% for post in collections.til %\}
+- <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>a</span> <span class="token attr-name">href</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span><span class="token punctuation">"</span></span><span class="token punctuation">></span></span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>a</span><span class="token punctuation">></span></span> --- {\{ post.data.date | toDate }}
+{\% endfor %\}</code></pre>
+<p>就可以生成这样的markdown代码：</p>
+<pre class="language-html"><code class="language-html">
+- <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>a</span> <span class="token attr-name">href</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>/til/23-12-10/<span class="token punctuation">"</span></span><span class="token punctuation">></span></span>用eleventy建站<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>a</span><span class="token punctuation">></span></span> --- 2023-12-10
+
+- <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>a</span> <span class="token attr-name">href</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>/til/23-12-10/<span class="token punctuation">"</span></span><span class="token punctuation">></span></span>用eleventy建站<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>a</span><span class="token punctuation">></span></span> --- 2023-12-10
+</code></pre>
+<p>现在只有一篇文章，等再多一点，它就会变成一个很长的列表，包括到我所有标记为til的文章的链接。</p>
+<p>这个操作的原理是：11ty会把你的所有文章保存在一个叫<code>collections</code>的Object里，所有标记为<code>til</code>的文件会放在一个数组中，使用<code>collections.til</code>读取。其中每一篇文章会根据你给的Front Matter（中文翻译成前言，好像怪怪的）以及生成过程中的信息，生成一系列的数据。</p>
+<p>比如以上代码中，<code>post.url</code>就是生成的文章链接，<code>post.data.title</code>就是我文件里取的文章标题。</p>
+<p>可以使用自己的代码对这些数据进行操作，11ty把这些东西叫做filter。在我的代码中就用<code>post.data.date | toDate</code>把文章的日期按照“年-月-日”的格式输出。自定义filter也需要修改<code>.eleventy.js</code>文件：</p>
+<pre class="language-js"><code class="language-js">module<span class="token punctuation">.</span><span class="token function-variable function">exports</span> <span class="token operator">=</span> <span class="token keyword">function</span> <span class="token punctuation">(</span><span class="token parameter">eleventyConfig</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token comment">// ...</span>
+    eleventyConfig<span class="token punctuation">.</span><span class="token function">addFilter</span><span class="token punctuation">(</span><span class="token string">'toDate'</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token parameter">dateObj</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+        <span class="token keyword">return</span> DateTime<span class="token punctuation">.</span><span class="token function">fromJSDate</span><span class="token punctuation">(</span>dateObj<span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">toISODate</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span><span class="token punctuation">)</span>
+    <span class="token comment">// ...</span>
+<span class="token punctuation">}</span><span class="token punctuation">;</span></code></pre>
+<p>这里使用了一个js库进行时间格式化。据说11ty有相当不错的自定义能力。</p>
