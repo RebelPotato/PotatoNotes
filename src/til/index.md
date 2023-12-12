@@ -1,8 +1,9 @@
 ---
-title: 大目录
+title: 今天我学到了……
 tags: map
+layout: til.njk
 ---
-# 今天我学到了……
+<h1>今天我学到了……</h1>
 
 {% for post in collections.til reversed %}
 - <a href="{{ post.url }}">{{ post.data.title }}</a> --- {{ post.data.date | toDate }}

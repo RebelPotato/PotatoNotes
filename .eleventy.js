@@ -1,8 +1,9 @@
 const { DateTime } = require("luxon");
 const syntaxHighlight = require("@11ty/eleventy-plugin-syntaxhighlight");
 
-
 module.exports = function (eleventyConfig) {
+    // css
+    eleventyConfig.addPassthroughCopy("src/css");
     // add syntax highlighting
     eleventyConfig.addPlugin(syntaxHighlight);
     // set custom time formatting
