@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>
+            土豆笔记 - 进一步建站尝试
+        </title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="关于这个土豆的一切">
+        <link rel="stylesheet" href="/css/foundation.css">
+        <link href="https://unpkg.com/prismjs@1.20.0/themes/prism-okaidia.css" rel="stylesheet">
+    </head>
+    <body>
+        <header>
+            <h1><a href="/" class="home-link">土豆笔记</a></h1>
+            <nav>
+                <h2 class="visually-hidden">Top level navigation menu</h2>
+                <ul class="nav">
+                    <li class="nav-item"><a href="/about/">About</a></li>
+                    <li class="nav-item"><a href="/til/">TIL</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <main id="skip">
+			<h1>进一步建站尝试</h1>
+
+<p>这是建站的第二集。</p>
+<h3>模板</h3>
+<p>为了让每个页面看起来统一，需要加上一个模板。我想用nunjucks，它功能更强大。于是乎：</p>
+<pre class="language-html"><code class="language-html"><span class="token doctype"><span class="token punctuation">&lt;!</span><span class="token doctype-tag">doctype</span> <span class="token name">html</span><span class="token punctuation">></span></span>
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>html</span> <span class="token attr-name">lang</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>en<span class="token punctuation">"</span></span><span class="token punctuation">></span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>head</span><span class="token punctuation">></span></span>
+        <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>meta</span> <span class="token attr-name">charset</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>utf-8<span class="token punctuation">"</span></span><span class="token punctuation">></span></span>
+        <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>title</span><span class="token punctuation">></span></span>Wait what?<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>title</span><span class="token punctuation">></span></span>
+        <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>link</span> <span class="token attr-name">rel</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>stylesheet<span class="token punctuation">"</span></span> <span class="token attr-name">href</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>/css/simple.css<span class="token punctuation">"</span></span><span class="token punctuation">></span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>head</span><span class="token punctuation">></span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>body</span><span class="token punctuation">></span></span>
+        <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>h1</span><span class="token punctuation">></span></span> {{ title }} <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>h1</span><span class="token punctuation">></span></span>
+        {{ content }}
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>body</span><span class="token punctuation">></span></span>
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>html</span><span class="token punctuation">></span></span></code></pre>
+<p>我在/src/_includes/til.njk中加入这个模板，但是行不通！所有html都被当作一个字符串输出了！</p>
+<p>【本应该加一张截图，但是我懒】</p>
+<p>原来nunjucks的模板会自动对输入的字符串进行转义（就是给每一个可能被当作html的），所以需要加上safe过滤器，把html字符串重新转为html。</p>
+<pre class="language-diff-html"><code class="language-diff-html"><span class="token deleted-sign deleted language-html"><span class="token prefix deleted">-</span>  {{ content }}
+</span><span class="token inserted-sign inserted language-html"><span class="token prefix inserted">+</span>  {{ content | safe }}
+</span></code></pre>
+<p>这样一来内容就可以正常显示了。</p>
+<p>（值得一提，默认所有双括号都代表内容插入，如果要在markdown里面加入不被翻译的双括号，可以使用{% raw %} 与 {% endrAw %} （把A改成小写😓）把一段文字包裹起来，这样它就不会被解释了。）</p>
+<h3>尝试加入css</h3>
+<p>如你所见，现在这个站已经有css了。有了layout以后，加入css就比较轻松。首先需要在.eleventy.js文件里输入自己的css文件夹的位置，我把它放在了/src/css,这个文件夹里放了一个文件simple.css，所以：</p>
+<pre class="language-diff-js"><code class="language-diff-js"><span class="token unchanged language-js"><span class="token prefix unchanged"> </span>   <span class="token comment">// css</span>
+<span class="token prefix unchanged"> </span>   eleventyConfig<span class="token punctuation">.</span><span class="token function">addPassthroughCopy</span><span class="token punctuation">(</span><span class="token string">"src/css"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token prefix unchanged"> </span>   <span class="token comment">// ...</span>
+</span></code></pre>
+<p>这个代表把src/css文件夹里的所有文件都复制到输出目录里，放在根目录的/css文件夹下。然后只需要在layout里加入一行：</p>
+<pre class="language-html"><code class="language-html"><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>link</span> <span class="token attr-name">rel</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>stylesheet<span class="token punctuation">"</span></span> <span class="token attr-name">href</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>/css/simple.css<span class="token punctuation">"</span></span><span class="token punctuation">></span></span></code></pre>
+<p>突然，这个html文件就可以使用css了！</p>
+<h3>代码高亮</h3>
+<p>有了css就可以实现代码高亮了。eleventy有一个<a href="https://www.11ty.dev/docs/plugins/syntaxhighlight/">官方代码高亮插件</a>，能够在本地生成代码高亮，不需要js代码，对网络不佳的用户很友好。使用方法是：先安装npm包裹，再在配置js文件中声明这一点：</p>
+<pre class="language-diff-js"><code class="language-diff-js"><span class="token unchanged language-js"><span class="token prefix unchanged"> </span>   <span class="token comment">// ...</span>
+<span class="token prefix unchanged"> </span>   <span class="token comment">// add syntax highlighting</span>
+<span class="token prefix unchanged"> </span>   eleventyConfig<span class="token punctuation">.</span><span class="token function">addPlugin</span><span class="token punctuation">(</span>syntaxHighlight<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token prefix unchanged"> </span>   <span class="token comment">// ...</span>
+</span></code></pre>
+<p>最后只要在html文件/模板里加入它写好的css文件，就大功告成。由于暂时比较懒，使用在线获取文件的方法获得css文件，但完全可以把它下载到本地与simple.css一起使用。</p>
+<h3>下一步</h3>
+<ol>
+<li>让站点稍微好看一些</li>
+<li>加入导航栏</li>
+<li>尝试加入html元素代替括号，这样可以让它们更好看</li>
+</ol>
+
+<ul class="links-nextprev"><li>上一篇： <a href="/til/2023-12-11/">第三空间</a></li><li>下一篇： <a href="/til/2023-12-13/">变漂亮！</a></li>
+</ul>
+		</main>
+
+		<footer></footer>
+    </body>
+</html>

@@ -1,0 +1,5 @@
+{
+    "layout": "til.njk",
+    "permalink": "/til/{{ date | toDate }}/",
+    "tags": "til"
+}

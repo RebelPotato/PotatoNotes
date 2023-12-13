@@ -1,0 +1,18 @@
+---
+title: TIL
+permalink: /til/
+layout: base
+description: "今天这个土豆学到了什么东西"
+eleventyNavigation: 
+    key: TIL
+    order: 2
+---
+<h1> Today I Learned... </h1>
+<h2> 即今天我学到了什么… </h2>
+
+<ul>
+{% for post in collections.til reversed %}
+    <li><a href="{{ post.url }}">{{ post.data.title }}</a> 
+        --- {{ post.data.date | toDate }}</li>
+{% endfor %}
+</ul>

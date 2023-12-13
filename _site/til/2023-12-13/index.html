@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>
+            土豆笔记 - 变漂亮！
+        </title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="关于这个土豆的一切">
+        <link rel="stylesheet" href="/css/foundation.css">
+        <link href="https://unpkg.com/prismjs@1.20.0/themes/prism-okaidia.css" rel="stylesheet">
+    </head>
+    <body>
+        <header>
+            <h1><a href="/" class="home-link">土豆笔记</a></h1>
+            <nav>
+                <h2 class="visually-hidden">Top level navigation menu</h2>
+                <ul class="nav">
+                    <li class="nav-item"><a href="/about/">About</a></li>
+                    <li class="nav-item"><a href="/til/">TIL</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <main id="skip">
+			<h1>变漂亮！</h1>
+
+<p>建站第三集！很多代码来自<a href="https://github.com/11ty/eleventy-base-blog">这个官方初学者仓库</a>，你可以上这里看一看它的效果。</p>
+<h2>导航</h2>
+<h3>上边的导航</h3>
+<p>eleventy有一个<a href="https://www.11ty.dev/docs/plugins/navigation/">导航插件</a>，正好可以用上。名字是<code>@11ty/eleventy-navigation</code>，安装以后只需要像之前一样在<code>.eleventy.js</code>里加入就可以了。</p>
+<pre class="language-js"><code class="language-js"><span class="token keyword">const</span> <span class="token punctuation">{</span> EleventyNavigation <span class="token punctuation">}</span> <span class="token operator">=</span> <span class="token function">require</span><span class="token punctuation">(</span><span class="token string">"@11ty/eleventy-navigation"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+module<span class="token punctuation">.</span><span class="token function-variable function">exports</span> <span class="token operator">=</span> <span class="token keyword">function</span><span class="token punctuation">(</span><span class="token parameter">eleventyConfig</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    eleventyConfig<span class="token punctuation">.</span><span class="token function">addPlugin</span><span class="token punctuation">(</span>EleventyNavigation<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span><span class="token punctuation">;</span></code></pre>
+<p>然后在你需要导航的页面前加入表头，形如：</p>
+<pre class="language-yaml"><code class="language-yaml"><span class="token key atrule">eleventyNavigation</span><span class="token punctuation">:</span> 
+    <span class="token key atrule">key</span><span class="token punctuation">:</span> About
+    <span class="token key atrule">order</span><span class="token punctuation">:</span> <span class="token number">1</span></code></pre>
+<p>这些页面就已经在<code>collections.all | eleventyNavigation</code>这个collection里了！</p>
+<p>接着在模板里面加入自己的html生成代码，比如：</p>
+<pre class="language-liquid"><code class="language-liquid"><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>ul</span> <span class="token attr-name">class</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>nav<span class="token punctuation">"</span></span><span class="token punctuation">></span></span>
+<span class="token liquid language-liquid"><span class="token delimiter punctuation">{%-</span> <span class="token keyword">for</span> entry <span class="token keyword">in</span> collections<span class="token punctuation">.</span>all <span class="token operator">|</span> <span class="token function filter">eleventyNavigation</span> <span class="token delimiter punctuation">%}</span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>li</span> <span class="token attr-name">class</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>nav-item<span class="token punctuation">"</span></span><span class="token punctuation">></span></span>
+        <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>a</span> <span class="token attr-name">href</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span><span class="token liquid language-liquid"><span class="token delimiter punctuation">{{</span> entry<span class="token punctuation">.</span>url <span class="token delimiter punctuation">}}</span></span><span class="token punctuation">"</span></span>
+        <span class="token attr-name"><span class="token liquid language-liquid"><span class="token delimiter punctuation">{%</span> <span class="token keyword">if</span> entry<span class="token punctuation">.</span>url <span class="token operator">==</span> <span class="token object">page</span><span class="token punctuation">.</span>url <span class="token delimiter punctuation">%}</span></span></span> <span class="token attr-name">aria-current</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>page<span class="token punctuation">"</span></span><span class="token attr-name"><span class="token liquid language-liquid"><span class="token delimiter punctuation">{%</span> <span class="token keyword">endif</span> <span class="token delimiter punctuation">%}</span></span></span><span class="token punctuation">></span></span>
+        <span class="token liquid language-liquid"><span class="token delimiter punctuation">{{</span> entry<span class="token punctuation">.</span>title <span class="token delimiter punctuation">}}</span></span>
+        <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>a</span><span class="token punctuation">></span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>li</span><span class="token punctuation">></span></span>
+<span class="token liquid language-liquid"><span class="token delimiter punctuation">{%-</span> <span class="token keyword">endfor</span> <span class="token delimiter punctuation">%}</span></span>
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>ul</span><span class="token punctuation">></span></span></code></pre>
+<p>插件就会自动帮你生成这样的一个列表：</p>
+<pre class="language-html"><code class="language-html"><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>nav</span><span class="token punctuation">></span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>h2</span> <span class="token attr-name">class</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>visually-hidden<span class="token punctuation">"</span></span><span class="token punctuation">></span></span>Top level navigation menu<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>h2</span><span class="token punctuation">></span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>ul</span> <span class="token attr-name">class</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>nav<span class="token punctuation">"</span></span><span class="token punctuation">></span></span>
+        <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>li</span> <span class="token attr-name">class</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>nav-item<span class="token punctuation">"</span></span><span class="token punctuation">></span></span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>a</span> <span class="token attr-name">href</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>/about/<span class="token punctuation">"</span></span><span class="token punctuation">></span></span>About<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>a</span><span class="token punctuation">></span></span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>li</span><span class="token punctuation">></span></span>
+        <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>li</span> <span class="token attr-name">class</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>nav-item<span class="token punctuation">"</span></span><span class="token punctuation">></span></span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>a</span> <span class="token attr-name">href</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>/til/<span class="token punctuation">"</span></span><span class="token punctuation">></span></span>TIL<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>a</span><span class="token punctuation">></span></span><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>li</span><span class="token punctuation">></span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>ul</span><span class="token punctuation">></span></span>
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>nav</span><span class="token punctuation">></span></span></code></pre>
+<p>这两个页面是我加入了“Eleventy Navigation”表头的页面。</p>
+<h3>下边的导航</h3>
+<p>下边也可以加入导航，正好使用一下nunjucks的编程功能。</p>
+<pre class="language-liquid"><code class="language-liquid"><span class="token liquid language-liquid"><span class="token delimiter punctuation">{%-</span> <span class="token keyword">if</span> collections<span class="token punctuation">.</span>til <span class="token delimiter punctuation">%}</span></span>
+<span class="token liquid language-liquid"><span class="token delimiter punctuation">{%-</span> set previousPost <span class="token operator">=</span> collections<span class="token punctuation">.</span>til <span class="token operator">|</span> <span class="token function filter">getPreviousCollectionItem</span> <span class="token delimiter punctuation">%}</span></span>
+<span class="token liquid language-liquid"><span class="token delimiter punctuation">{%-</span> set nextPost <span class="token operator">=</span> collections<span class="token punctuation">.</span>til <span class="token operator">|</span> <span class="token function filter">getNextCollectionItem</span> <span class="token delimiter punctuation">%}</span></span>
+<span class="token liquid language-liquid"><span class="token delimiter punctuation">{%-</span> <span class="token keyword">if</span> nextPost <span class="token operator">or</span> previousPost <span class="token delimiter punctuation">%}</span></span>
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>ul</span> <span class="token attr-name">class</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>links-nextprev<span class="token punctuation">"</span></span><span class="token punctuation">></span></span>
+	<span class="token liquid language-liquid"><span class="token delimiter punctuation">{%-</span> <span class="token keyword">if</span> previousPost <span class="token delimiter punctuation">%}</span></span>
+        <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>li</span><span class="token punctuation">></span></span>上一篇： 
+            <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>a</span> <span class="token attr-name">href</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span><span class="token liquid language-liquid"><span class="token delimiter punctuation">{{</span> previousPost<span class="token punctuation">.</span>url <span class="token delimiter punctuation">}}</span></span><span class="token punctuation">"</span></span><span class="token punctuation">></span></span>
+                <span class="token liquid language-liquid"><span class="token delimiter punctuation">{{</span> previousPost<span class="token punctuation">.</span>data<span class="token punctuation">.</span>title <span class="token delimiter punctuation">}}</span></span>
+            <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>a</span><span class="token punctuation">></span></span>
+        <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>li</span><span class="token punctuation">></span></span>
+    <span class="token liquid language-liquid"><span class="token delimiter punctuation">{%</span> <span class="token keyword">endif</span> <span class="token delimiter punctuation">%}</span></span>
+	<span class="token liquid language-liquid"><span class="token delimiter punctuation">{%-</span> <span class="token keyword">if</span> nextPost <span class="token delimiter punctuation">%}</span></span>
+        <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>li</span><span class="token punctuation">></span></span>下一篇： 
+            <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>a</span> <span class="token attr-name">href</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span><span class="token liquid language-liquid"><span class="token delimiter punctuation">{{</span> nextPost<span class="token punctuation">.</span>url <span class="token delimiter punctuation">}}</span></span><span class="token punctuation">"</span></span><span class="token punctuation">></span></span>
+                <span class="token liquid language-liquid"><span class="token delimiter punctuation">{{</span> nextPost<span class="token punctuation">.</span>data<span class="token punctuation">.</span>title <span class="token delimiter punctuation">}}</span></span>
+            <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>a</span><span class="token punctuation">></span></span>
+        <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>li</span><span class="token punctuation">></span></span>
+    <span class="token liquid language-liquid"><span class="token delimiter punctuation">{%</span> <span class="token keyword">endif</span> <span class="token delimiter punctuation">%}</span></span>
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>ul</span><span class="token punctuation">></span></span>
+<span class="token liquid language-liquid"><span class="token delimiter punctuation">{%-</span> <span class="token keyword">endif</span> <span class="token delimiter punctuation">%}</span></span>
+<span class="token liquid language-liquid"><span class="token delimiter punctuation">{%-</span> <span class="token keyword">endif</span> <span class="token delimiter punctuation">%}</span></span></code></pre>
+<p>逻辑很清晰：先设两个变量表示上一篇、下一篇文章，如果它们存在的话，就在一个表里生成一个元素。</p>
+<h2>变漂亮</h2>
+<p>由于本人css技术堪忧，直接把上边那个初学者仓库里的css文件拷贝了过来，名字改成foundation.css。以我目前水平，完全看不懂它在做什么，但是它有有现成的class，于是我就直接拿来用了。</p>
+<p>使用自己看不懂的东西，不是我爱干的事。但它确实漂亮，所以作为权宜之计，先放在这里了。以后把看得懂的部分慢慢改成自己配置的内容。</p>
+
+<ul class="links-nextprev"><li>上一篇： <a href="/til/2023-12-12/">进一步建站尝试</a></li>
+</ul>
+		</main>
+
+		<footer></footer>
+    </body>
+</html>
