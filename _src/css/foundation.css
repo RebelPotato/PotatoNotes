@@ -286,3 +286,8 @@ footer {
 	align-items: center;
 	padding: 1em;
 }
+
+.dt-published {
+	font-size: 0.8em;
+	color: var(--color-gray-20);
+}
