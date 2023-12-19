@@ -1,0 +1,17 @@
+---
+title: 小玩意
+permalink: /toys/
+layout: base
+description: "制作的一些可以互动的网页！"
+eleventyNavigation: 
+    key: Toys
+    order: 3
+---
+<h1>一些小玩意</h1>
+<p>注：这个页面<strong>尚未完工</strong>，我还没想好它应该长成什么样子。我希望保存最古早的文章（slidedoor），让它在功能上与在被纳入站点前没有区别</p>
+
+<ul>
+{% for post in collections.toy reversed %}
+    <li><a href="{{ post.url }}">{{ post.data.title }}</a></li>
+{% endfor %}
+</ul>
